@@ -7,11 +7,14 @@ public class Main1 {
         // 注册驱动
         Class.forName("com.mysql.jdbc.Driver");
         // 建立连接，面向接口编程
-        Connection root = DriverManager.getConnection("jdbc:mysql://127.0.0.1/cs2301", "root", "123456");
+        String url = "jdbc:mysql://localhost:3306/cs2301";
+        String username = "root";
+        String password = "123456";
+        Connection root = DriverManager.getConnection(url, username, password);
         System.out.println(root);
 
         // 创建SQL语句
-        String str = "select * from dept";
+        String str = "select deptno, dname, loc from dept";
 
         Statement s1 = root.createStatement();
 
@@ -20,7 +23,7 @@ public class Main1 {
 
         // 处理结果
         while (r1.next()) { // 判断结果集中是否有数据
-            System.out.println(r1.getObject(1) +" , "+ r1.getObject(2));
+            System.out.println(r1.getObject(1) + ", " + r1.getObject(2) + ", " + r1.getObject(3));
         }
 
         // 释放资源
