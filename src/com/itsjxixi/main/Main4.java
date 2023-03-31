@@ -1,17 +1,18 @@
-package com.itsjxixi.mains.main2;
+package com.itsjxixi.main;
 
-import com.itsjxixi.mains.main2.entity.Dept;
+import com.itsjxixi.entity.Dept;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Main3 {
+public class Main4 {
     public static void main(String[] args) {
-        String username = "tom";
-        String password = "100101";
+        String username = "' or 1=1 or 1= '";
+        // String username = "tom";
+        String password = "1";
 
-        List<Dept> list= select(username, password);
+        List<Dept> list = select(username, password);
 
         if (list.size() != 0) {
             for (Dept d : list) {
@@ -26,7 +27,7 @@ public class Main3 {
     public static List<Dept> select(String u, String p) {
         List<Dept> list = new ArrayList<>();
         Connection connection = null;
-        Statement statement = null;
+        PreparedStatement ps = null;
         ResultSet resultSet = null;
         try {
             // 注册驱动
@@ -37,10 +38,12 @@ public class Main3 {
             String password = "123456";
             connection = DriverManager.getConnection(url, username, password);
             // 获取发送对象
-            statement = connection.createStatement();
+            String sql = "select * from user where username = ? and password = ?";
+            ps = connection.prepareStatement(sql);
+            ps.setString(1, u);
+            ps.setString(2, p);
             // 发送
-            String sql = "select * from user where username = '" + u + "' and password = '" + p + "'";
-            resultSet = statement.executeQuery(sql);
+            resultSet = ps.executeQuery();
             while (resultSet.next()) {
                 list.add(new Dept(resultSet.getInt("id"), resultSet.getString("username"),
                         resultSet.getString("password"), resultSet.getString("phone")));
@@ -55,8 +58,8 @@ public class Main3 {
                 throwables.printStackTrace();
             } finally {
                 try {
-                    if (statement != null)
-                        statement.close();
+                    if (ps != null)
+                        ps.close();
                 } catch (SQLException throwables) {
                     throwables.printStackTrace();
                 } finally {

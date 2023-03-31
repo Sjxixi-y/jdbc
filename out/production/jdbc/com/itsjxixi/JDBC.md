@@ -334,7 +334,7 @@ public class Main2 {
 
 ### 2. 注册
 
-```
+```java
 public class Main3 {
     public static void main(String[] args) {
         String username = "to";
@@ -407,33 +407,146 @@ public class Main3 {
 
 ## 三、SQL注入
 
+### 1. 介绍
+
 输入的数据中含有SQL关键字并且参与了编译，导致条件为true。以至于得到正确的结果。
 
 如 `注册` 例子中，密用户或密码输入中：
 
+```java
+String username = "' or 1=1 or 1= '";
+String password = "wlhnmhi";
 ```
-String username = 
+
+
+
+结果
+
+```java
+Dept{id=1, username='tom', password='100101', phone='11312341236'}
+Dept{id=2, username='mark', password='111111', phone='15329687531'}
+Dept{id=3, username='lucy', password='111111', phone='15329687531'}
+```
+
+数据库搜索始终为 true。
+
+
+
+### 2. PreparedStatement 预编译
+
+#### 1. 作用
+
+（1）提高效率
+
+（2）安全，避免SQL注入
+
+（3）动态填入数据，执行多个同构的SQL语句
+
+
+
+**Statement会使数据库频繁编译SQL，可能造成数据库缓冲区溢出。**
+
+
+
+#### 2. 使用
+
+参数标记（占位符）
+
+```java
+// 其中 ？ 为占位符
+String sql = "select * from user where username = ? and password = ?";
 ```
 
 
 
+动态参数绑定
+
+```sql
+PreparedStatement pstmt = conn.prepareStatement(sql)
+// 其中，第一个入参表示 占位符次序。
+pstmt.setString(1, "");
+pstmt.setString(2, "");
+```
 
 
 
+修改后
+
+```java
+public class Main5 {
+    public static void main(String[] args) {
+        // String username = "' or 1=1 or 1= '";
+        String username = "tom";
+        String password = "100101";
+
+        List<Dept> list = select(username, password);
+
+        if (list.size() != 0) {
+            for (Dept d : list) {
+                System.out.println(d);
+            }
+        } else {
+            System.out.println("密码错误");
+        }
+    }
+
+    // 查询
+    public static List<Dept> select(String u, String p) {
+        List<Dept> list = new ArrayList<>();
+        Connection connection = null;
+        PreparedStatement ps = null;
+        ResultSet resultSet = null;
+        try {
+            // 注册驱动
+            Class.forName("com.mysql.jdbc.Driver");
+            // 连接数据库
+            String url = "jdbc:mysql://localhost:3306/cs2301?useSSL=false";
+            String username = "root";
+            String password = "123456";
+            connection = DriverManager.getConnection(url, username, password);
+            // 获取发送对象
+            String sql = "select * from user where username = ? and password = ?";
+            ps = connection.prepareStatement(sql);
+            ps.setString(1, u);
+            ps.setString(2, p);
+            // 发送
+            resultSet = ps.executeQuery();
+            while (resultSet.next()) {
+                list.add(new Dept(resultSet.getInt("id"), resultSet.getString("username"),
+                        resultSet.getString("password"), resultSet.getString("phone")));
+            }
+        } catch (ClassNotFoundException | SQLException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (resultSet != null)
+                    resultSet.close();
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            } finally {
+                try {
+                    if (ps != null)
+                        ps.close();
+                } catch (SQLException throwables) {
+                    throwables.printStackTrace();
+                } finally {
+                    try {
+                        if (connection != null)
+                            connection.close();
+                    } catch (SQLException throwables) {
+                        throwables.printStackTrace();
+                    }
+                }
+            }
+        }
+        return list;
+    }
+}
+```
 
 
 
-
-
-
-
-
-
-
-
-
-
-
+四、封装工具类
 
 
 

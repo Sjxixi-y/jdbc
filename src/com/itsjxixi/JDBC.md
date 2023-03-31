@@ -117,7 +117,7 @@ public class Main1 {
 
         Statement s1 = root.createStatement();
 
-        // 执行
+        // 执行，使用结果集接收
         ResultSet r1 = s1.executeQuery(str);
 
         // 处理结果
@@ -433,6 +433,335 @@ Dept{id=3, username='lucy', password='111111', phone='15329687531'}
 
 
 ### 2. PreparedStatement 预编译
+
+#### 1. 作用
+
+（1）提高效率
+
+（2）安全，避免SQL注入
+
+（3）动态填入数据，执行多个同构的SQL语句
+
+
+
+**Statement会使数据库频繁编译SQL，可能造成数据库缓冲区溢出。**
+
+
+
+#### 2. 使用
+
+参数标记（占位符）
+
+```java
+// 其中 ？ 为占位符
+String sql = "select * from user where username = ? and password = ?";
+```
+
+
+
+动态参数绑定
+
+```sql
+PreparedStatement pstmt = conn.prepareStatement(sql)
+// 其中，第一个入参表示 占位符次序。
+pstmt.setString(1, "");
+pstmt.setString(2, "");
+```
+
+
+
+修改后
+
+```java
+public class Main5 {
+    public static void main(String[] args) {
+        // String username = "' or 1=1 or 1= '";
+        String username = "tom";
+        String password = "100101";
+
+        List<Dept> list = select(username, password);
+
+        if (list.size() != 0) {
+            for (Dept d : list) {
+                System.out.println(d);
+            }
+        } else {
+            System.out.println("密码错误");
+        }
+    }
+
+    // 查询
+    public static List<Dept> select(String u, String p) {
+        List<Dept> list = new ArrayList<>();
+        Connection connection = null;
+        PreparedStatement ps = null;
+        ResultSet resultSet = null;
+        try {
+            // 注册驱动
+            Class.forName("com.mysql.jdbc.Driver");
+            // 连接数据库
+            String url = "jdbc:mysql://localhost:3306/cs2301?useSSL=false";
+            String username = "root";
+            String password = "123456";
+            connection = DriverManager.getConnection(url, username, password);
+            // 获取发送对象
+            String sql = "select * from user where username = ? and password = ?";
+            ps = connection.prepareStatement(sql);
+            ps.setString(1, u);
+            ps.setString(2, p);
+            // 发送
+            resultSet = ps.executeQuery();
+            while (resultSet.next()) {
+                list.add(new Dept(resultSet.getInt("id"), resultSet.getString("username"),
+                        resultSet.getString("password"), resultSet.getString("phone")));
+            }
+        } catch (ClassNotFoundException | SQLException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (resultSet != null)
+                    resultSet.close();
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            } finally {
+                try {
+                    if (ps != null)
+                        ps.close();
+                } catch (SQLException throwables) {
+                    throwables.printStackTrace();
+                } finally {
+                    try {
+                        if (connection != null)
+                            connection.close();
+                    } catch (SQLException throwables) {
+                        throwables.printStackTrace();
+                    }
+                }
+            }
+        }
+        return list;
+    }
+}
+```
+
+
+
+## 四、封装工具类
+
+**util**
+
+```
+public class DaoUtil {
+    // 初始化
+    static {
+        try {
+            Class.forName("");
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+    // 获取 连接
+    public static Connection getConnection() {
+        Connection connection = null;
+        String url = "jdbc:mysql://localhost:3306/cs2301?useSSL=false";
+        String username = "root";
+        String password = "123456";
+        try {
+            connection =  DriverManager.getConnection(url, username, password);
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+        return connection;
+    }
+
+    public static void CloseAll(Connection c, PreparedStatement p, ResultSet r) {
+        try {
+            if (r != null)
+                r.close();
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        } finally {
+            try {
+                if (p != null)
+                    p.close();
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            } finally {
+                try {
+                    if (c != null)
+                        c.close();
+                } catch (SQLException throwables) {
+                    throwables.printStackTrace();
+                }
+            }
+        }
+    }
+}
+```
+
+```java
+public class Main5 {
+    // 增加
+    public static int insert(Dept d1) {
+        Connection connection = null;
+        PreparedStatement ps = null;
+        int a = -1;
+        try {
+            connection = DaoUtil.getConnection();
+            // 获取发送 SQL 对象
+            String sql = "insert into user values(null, ?, ?, ?)";
+            ps = connection.prepareStatement(sql);
+            //
+            ps.setString(1, d1.getUsername());
+            ps.setString(2, d1.getPassword());
+            ps.setString(3, d1.getPhone());
+            // 发送 SQL，返回结果集
+            a = ps.executeUpdate(sql);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DaoUtil.CloseAll(connection, ps, null);
+        }
+        return a;
+    }
+
+    // 删除
+    public static int delete(int id) {
+        Connection connection = null;
+        PreparedStatement ps = null;
+        int i = -1;
+        try {
+            connection = DaoUtil.getConnection();
+            // 预编译
+            String sql = "delete from user where id = ?";
+            ps = connection.prepareStatement(sql);
+            // 修改占位符
+            ps.setInt(1, id);
+            // 执行
+            i = ps.executeUpdate(sql);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DaoUtil.CloseAll(connection, ps, null);
+        }
+        return i;
+    }
+
+    // 修改
+    public static int update(Dept d1, int id) {
+        Connection connection = null;
+        PreparedStatement ps = null;
+        int i = -1;
+        try {
+            connection = DaoUtil.getConnection();
+            // 预编译
+            String sql = "update user set username = ?, password = ?, phone = ? where id = ?";
+            ps = connection.prepareStatement(sql);
+            // 编译后文件 修改占位符
+            ps.setString(1, d1.getUsername());
+            ps.setString(2, d1.getPassword());
+            ps.setString(3, d1.getPhone());
+            ps.setInt(4, id);
+            // 执行
+            i = ps.executeUpdate(sql);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DaoUtil.CloseAll(connection, ps, null);
+        }
+        return i;
+    }
+
+    // 查询
+    public static List<Dept> select(int ids) {
+        List<Dept> list = new ArrayList<>();
+        Connection connection = null;
+        PreparedStatement ps = null;
+        ResultSet resultSet = null;
+        try {
+            connection = DaoUtil.getConnection();
+            // 预编译
+            String sql;
+            if (ids <= 0) {
+                sql = "select * from user";
+
+            } else {
+                sql = "SELECT * from user where id = ?";
+            }
+            ps = connection.prepareStatement(sql);
+            // 修改占位符
+            ps.setInt(1, ids);
+            // 发送
+            resultSet = ps.executeQuery(sql);
+            while (resultSet.next()) {
+                list.add(new Dept(resultSet.getInt("id"), resultSet.getString("username"),
+                        resultSet.getString("password"), resultSet.getString("phone")));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DaoUtil.CloseAll(connection, ps, resultSet);
+        }
+        return list;
+    }
+}
+```
+
+
+
+### 对象关系映射
+
+```java
+while (resultSet.next()) {
+list.add(new Dept(resultSet.getInt("id"), resultSet.getString("username"),
+resultSet.getString("password"), resultSet.getString("phone")));
+}
+```
+
+
+
+如上代码，其中 Dept 类中的属性与数据库中的属性相对应。
+
+
+
+**结果集：**
+
+```hava
+ResultSet r1 = s1.executeQuery(str);
+```
+
+当使用 `executeQuery`  方法执行后会返回一个结果集。
+
+```java
+// 使用 next 方法判断是否有数据
+r1.next()
+// 使用 set 方法取出数据
+r1.getXXX();
+// 使用 列数
+getXXX(1);
+// 使用 列名
+getXXX("id");
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

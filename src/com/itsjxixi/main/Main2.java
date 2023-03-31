@@ -1,6 +1,6 @@
-package com.itsjxixi.mains.main2;
+package com.itsjxixi.main;
 
-import com.itsjxixi.mains.main2.entity.Dept;
+import com.itsjxixi.entity.Dept;
 
 import java.sql.*;
 import java.util.ArrayList;

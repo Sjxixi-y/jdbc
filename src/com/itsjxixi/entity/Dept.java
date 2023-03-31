@@ -1,4 +1,4 @@
-package com.itsjxixi.mains.main2.entity;
+package com.itsjxixi.entity;
 
 public class Dept {
     private int id;

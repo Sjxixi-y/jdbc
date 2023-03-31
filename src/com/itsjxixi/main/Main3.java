@@ -1,15 +1,15 @@
-package com.itsjxixi.mains.main2;
+package com.itsjxixi.main;
 
-import com.itsjxixi.mains.main2.entity.Dept;
+import com.itsjxixi.entity.Dept;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Main4 {
+public class Main3 {
     public static void main(String[] args) {
-        String username = "' or 1=1 or 1= '";
-        String password = "wlhnmhi";
+        String username = "tom";
+        String password = "100101";
 
         List<Dept> list= select(username, password);
 
