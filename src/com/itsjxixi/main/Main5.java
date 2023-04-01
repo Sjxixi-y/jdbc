@@ -1,7 +1,7 @@
-package com.itsjxixi.mains.main5;
+package com.itsjxixi.main;
 
 import com.itsjxixi.entity.Dept;
-import com.itsjxixi.mains.main5.util.DaoUtil;
+import com.itsjxixi.util.DaoUtil;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -26,7 +26,7 @@ public class Main5 {
             ps.setString(2, d1.getPassword());
             ps.setString(3, d1.getPhone());
             // 发送 SQL，返回结果集
-            a = ps.executeUpdate(sql);
+            a = ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {
@@ -48,7 +48,7 @@ public class Main5 {
             // 修改占位符
             ps.setInt(1, id);
             // 执行
-            i = ps.executeUpdate(sql);
+            i = ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {
@@ -73,7 +73,7 @@ public class Main5 {
             ps.setString(3, d1.getPhone());
             ps.setInt(4, id);
             // 执行
-            i = ps.executeUpdate(sql);
+            i = ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {
@@ -102,7 +102,7 @@ public class Main5 {
             // 修改占位符
             ps.setInt(1, ids);
             // 发送
-            resultSet = ps.executeQuery(sql);
+            resultSet = ps.executeQuery();
             while (resultSet.next()) {
                 list.add(new Dept(resultSet.getInt("id"), resultSet.getString("username"),
                         resultSet.getString("password"), resultSet.getString("phone")));

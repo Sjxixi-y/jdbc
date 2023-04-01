@@ -117,7 +117,7 @@ public class Main1 {
 
         Statement s1 = root.createStatement();
 
-        // 执行
+        // 执行，使用结果集接收
         ResultSet r1 = s1.executeQuery(str);
 
         // 处理结果
@@ -546,7 +546,256 @@ public class Main5 {
 
 
 
-四、封装工具类
+## 四、封装工具类
+
+**util**
+
+```
+public class DaoUtil {
+    // 初始化
+    static {
+        try {
+            Class.forName("");
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+    // 获取 连接
+    public static Connection getConnection() {
+        Connection connection = null;
+        String url = "jdbc:mysql://localhost:3306/cs2301?useSSL=false";
+        String username = "root";
+        String password = "123456";
+        try {
+            connection =  DriverManager.getConnection(url, username, password);
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+        return connection;
+    }
+
+    public static void CloseAll(Connection c, PreparedStatement p, ResultSet r) {
+        try {
+            if (r != null)
+                r.close();
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        } finally {
+            try {
+                if (p != null)
+                    p.close();
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            } finally {
+                try {
+                    if (c != null)
+                        c.close();
+                } catch (SQLException throwables) {
+                    throwables.printStackTrace();
+                }
+            }
+        }
+    }
+}
+```
+
+```java
+public class Main5 {
+    // 增加
+    public static int insert(Dept d1) {
+        Connection connection = null;
+        PreparedStatement ps = null;
+        int a = -1;
+        try {
+            connection = DaoUtil.getConnection();
+            // 获取发送 SQL 对象
+            String sql = "insert into user values(null, ?, ?, ?)";
+            ps = connection.prepareStatement(sql);
+            //
+            ps.setString(1, d1.getUsername());
+            ps.setString(2, d1.getPassword());
+            ps.setString(3, d1.getPhone());
+            // 发送 SQL，返回结果集
+            a = ps.executeUpdate(sql);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DaoUtil.CloseAll(connection, ps, null);
+        }
+        return a;
+    }
+
+    // 删除
+    public static int delete(int id) {
+        Connection connection = null;
+        PreparedStatement ps = null;
+        int i = -1;
+        try {
+            connection = DaoUtil.getConnection();
+            // 预编译
+            String sql = "delete from user where id = ?";
+            ps = connection.prepareStatement(sql);
+            // 修改占位符
+            ps.setInt(1, id);
+            // 执行
+            i = ps.executeUpdate(sql);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DaoUtil.CloseAll(connection, ps, null);
+        }
+        return i;
+    }
+
+    // 修改
+    public static int update(Dept d1, int id) {
+        Connection connection = null;
+        PreparedStatement ps = null;
+        int i = -1;
+        try {
+            connection = DaoUtil.getConnection();
+            // 预编译
+            String sql = "update user set username = ?, password = ?, phone = ? where id = ?";
+            ps = connection.prepareStatement(sql);
+            // 编译后文件 修改占位符
+            ps.setString(1, d1.getUsername());
+            ps.setString(2, d1.getPassword());
+            ps.setString(3, d1.getPhone());
+            ps.setInt(4, id);
+            // 执行
+            i = ps.executeUpdate(sql);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DaoUtil.CloseAll(connection, ps, null);
+        }
+        return i;
+    }
+
+    // 查询
+    public static List<Dept> select(int ids) {
+        List<Dept> list = new ArrayList<>();
+        Connection connection = null;
+        PreparedStatement ps = null;
+        ResultSet resultSet = null;
+        try {
+            connection = DaoUtil.getConnection();
+            // 预编译
+            String sql;
+            if (ids <= 0) {
+                sql = "select * from user";
+
+            } else {
+                sql = "SELECT * from user where id = ?";
+            }
+            ps = connection.prepareStatement(sql);
+            // 修改占位符
+            ps.setInt(1, ids);
+            // 发送
+            resultSet = ps.executeQuery(sql);
+            while (resultSet.next()) {
+                list.add(new Dept(resultSet.getInt("id"), resultSet.getString("username"),
+                        resultSet.getString("password"), resultSet.getString("phone")));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DaoUtil.CloseAll(connection, ps, resultSet);
+        }
+        return list;
+    }
+}
+```
+
+
+
+### 对象关系映射
+
+```java
+while (resultSet.next()) {
+list.add(new Dept(resultSet.getInt("id"), resultSet.getString("username"),
+resultSet.getString("password"), resultSet.getString("phone")));
+}
+```
+
+
+
+如上代码，其中 Dept 类中的属性与数据库中的属性相对应。
+
+
+
+**结果集：**
+
+```hava
+ResultSet r1 = s1.executeQuery(str);
+```
+
+当使用 `executeQuery`  方法执行后会返回一个结果集。
+
+```java
+// 使用 next 方法判断是否有数据
+r1.next()
+// 使用 set 方法取出数据
+r1.getXXX();
+// 使用 列数
+getXXX(1);
+// 使用 列名
+getXXX("id");
+```
+
+
+
+### Date 日期工具类
+
+提供 字符串、util.Date 、sql.Date 之间相互转化的方法。
+
+
+
+## 五、事务
+
+关闭自动提交
+
+```java
+连接数据库对象.setAutoCommit(false);
+```
+
+
+
+手动提交事务
+
+```java
+连接数据库对象.commit();
+```
+
+
+
+手动回滚事务
+
+```
+连接数据库对象.rollback();
+```
+
+
+
+案例：银行转账
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -745,6 +745,340 @@ getXXX("id");
 
 
 
+### Date 日期工具类
+
+提供 字符串、util.Date 、sql.Date 之间相互转化的方法。
+
+
+
+## 五、事务
+
+关闭自动提交
+
+```java
+连接数据库对象.setAutoCommit(false);
+```
+
+
+
+手动提交事务
+
+```java
+连接数据库对象.commit();
+```
+
+
+
+手动回滚事务
+
+```
+连接数据库对象.rollback();
+```
+
+
+
+案例：银行转账
+
+```java
+public class BankController {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        BankService bs = new BankService();
+
+        System.out.print("请输入卡号：");
+        String card = sc.nextLine();
+
+        System.out.print("请输入密码：");
+        String password = sc.nextLine();
+
+        System.out.print("请输入对方卡号：");
+        String cardY = sc.nextLine();
+
+        System.out.print("请输入转账金额：");
+        int balance = sc.nextInt();
+
+        bs.transfer(card, password, cardY, balance);
+    }
+}
+```
+
+
+
+```java
+public class BankService {
+    private static BankDao bd = new BankDao();
+
+    // 转账
+    public void transfer(String card, String password, String cardY, int balance) {
+        // 查询账户是否存在
+        List<Users> users = bd.select(card);
+        if (users.size() < 1) {
+            System.out.println("输入的账户不存在");
+            return;
+        }
+        Users us1 = users.get(0);
+        // 判断密码是否正确
+        if (!us1.getPassword().equals(password)) {
+            System.out.println("密码错误");
+            return;
+        }
+        // 判断余额
+        if (us1.getBalance() < balance) {
+            System.out.println("余额不足");
+            return;
+        }
+
+        // 判断目标用户是否存在
+        List<Users> users2 = bd.select(cardY);
+        if (users2.size() < 1) {
+            System.out.println("目标用户不存在");
+            return;
+        }
+        Users us2 = users.get(0);
+        // 开启转账操作
+        int flag = 0;
+        try {
+            // 减少钱
+            bd.update(new Users(0, null, us1.getUsername(), us1.getPassword(), us1.getBalance() - balance), card);
+            flag++;
+            // 添加钱
+            int a = 5/0;
+            bd.update(new Users(0, null, us2.getUsername(), us2.getPassword(), us2.getBalance() + balance), cardY);
+            flag++;
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+
+        if (flag == 2) {
+            System.out.println("转账成功");
+        }
+    }
+}
+```
+
+
+
+```java
+public class BankDao {
+    // 数据修改
+    public int update(Users d1, String card) {
+        Connection connection = null;
+        PreparedStatement ps = null;
+        int i = -1;
+        try {
+            connection = DaoUtil.getConnection();
+            // 预编译
+            String sql = "update t_users set username = ?, password = ?, balance = ? where card = ?";
+            ps = connection.prepareStatement(sql);
+            // 编译后文件 修改占位符
+            ps.setString(1, d1.getUsername());
+            ps.setString(2, d1.getPassword());
+            ps.setInt(3, d1.getBalance());
+            ps.setString(4, card);
+            // 执行
+            i = ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DaoUtil.CloseAll(connection, ps, null);
+        }
+        return i;
+    }
+
+    // 查询数据
+    public List<Users> select(String card) {
+        List<Users> list = new ArrayList<>();
+        Connection connection = null;
+        PreparedStatement ps = null;
+        ResultSet resultSet = null;
+        try {
+            connection = DaoUtil.getConnection();
+            // 预编译
+            String sql;
+            sql = "select * from t_users where card = ?";
+            ps = connection.prepareStatement(sql);
+            // 修改占位符
+            ps.setString(1, card);
+            // 发送
+            resultSet = ps.executeQuery();
+            while (resultSet.next()) {
+                list.add(new Users(
+                        resultSet.getInt("id"),
+                        resultSet.getString("card"),
+                        resultSet.getString("username"),
+                        resultSet.getString("password"),
+                        resultSet.getInt("balance"))
+                );
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DaoUtil.CloseAll(connection, ps, resultSet);
+        }
+        return list;
+    }
+}
+```
+
+
+
+### 问题1：
+
+在 BankService 中的转账操作如果出现问题中断后，已经对数据库进行的操作不可被修改，未执行的操作不能进行。
+
+
+
+所以，使用事务来管理提交。
+
+
+
+修改之后的 BankService
+
+```java
+public class BankService {
+    private static BankDao bd = new BankDao();
+    // 创建一个数据库连接
+    Connection c = null;
+
+    // 转账
+    public void transfer(String card, String password, String cardY, int balance) {
+        // 查询账户是否存在
+        List<Users> users = bd.select(card);
+        if (users.size() < 1) {
+            System.out.println("输入的账户不存在");
+            return;
+        }
+        Users us1 = users.get(0);
+        // 判断密码是否正确
+        if (!us1.getPassword().equals(password)) {
+            System.out.println("密码错误");
+            return;
+        }
+        // 判断余额
+        if (us1.getBalance() < balance) {
+            System.out.println("余额不足");
+            return;
+        }
+
+        // 判断目标用户是否存在
+        List<Users> users2 = bd.select(cardY);
+        if (users2.size() < 1) {
+            System.out.println("目标用户不存在");
+            return;
+        }
+        Users us2 = users.get(0);
+        c = DaoUtil.getConnection();
+        try {
+            // 开启事务，关闭自动提交
+            c.setAutoCommit(false);
+            // 开启转账操作
+            int flag = 0;
+            // 减少钱
+            bd.update(new Users(0, null, us1.getUsername(), us1.getPassword(), us1.getBalance() - balance), card);
+            flag++;
+            // 添加钱
+            int a = 5 / 0;
+            bd.update(new Users(0, null, us2.getUsername(), us2.getPassword(), us2.getBalance() + balance), cardY);
+            flag++;
+
+            if (flag != 2) {
+                System.out.println("转账失败");
+                // 回滚
+                c.rollback();
+            }
+            // 手动提交
+            c.commit();
+        } catch (SQLException throwables) {
+            System.out.println(throwables);
+        } finally {
+            DaoUtil.CloseAll(c, null, null);
+        }
+    }
+}
+```
+
+
+
+### 问题2：
+
+但事务并没有被控制，上述 例子的 BankDao 层和 BankService 中使用的并不是同一个 连接对象。
+
+
+
+**解决方案1：** 
+
+- 将 Service 层中的 连接对象 传递到 Dao 层中。
+
+不推荐，因为会导致接口污染，让程序出现差异性。
+
+
+
+
+
+**解决方案2：**
+
+- ThreadLocal  线程共享资源
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
